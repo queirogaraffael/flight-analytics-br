@@ -1,0 +1,7 @@
+# dados extraídos
+data/ocorrencias_aviacao_civil_br/
+
+# arquivos de ambiente Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

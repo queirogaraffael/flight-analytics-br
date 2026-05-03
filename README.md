@@ -159,6 +159,18 @@ Apesar de as árvores de decisão e o ensemble (Random Forest) serem teoricament
 
 ---
 
+## Principais Aprendizados
+
+O maior valor deste projeto não esteve na complexidade do algoritmo escolhido, mas nas lições extraídas ao lidar com um dataset real, imperfeito e voltado para a administração em vez da operação:
+
+- **Features Proxies vs. Causalidade:** Trabalhar com dados puramente administrativos forçou um questionamento crítico. Foi necessário avaliar constantemente se variáveis (como `uf` ou `saida_pista`) representavam causas reais ou apenas volume/consequências, desenvolvendo uma visão aguçada contra o *data leakage*.
+- **A Subjetividade do Target:** Em tutoriais padrão, o target vem pronto e limpo. Aqui, o target precisou ser construído a partir de dados ambíguos. Assumir o risco de classificar e isolar a categoria `Outros` foi uma lição valiosa sobre como as decisões de negócio moldam o limite do que o modelo pode aprender na vida real.
+- **O Viés Algorítmico do SMOTE:** A descoberta empírica de que a Regressão Logística superou a Random Forest levou à reflexão de que algoritmos de balanceamento (como o SMOTE) não são neutros. Eles introduzem uma estrutura linear aos dados sintéticos, o que, em um dataset de metadados, acabou beneficiando inesperadamente o modelo linear.
+
+**Em suma:** Datasets ruins e imperfeitos ensinam muito mais sobre o processo de modelagem, capacidade investigativa e análise crítica do que datasets perfeitamente limpos ensinam sobre os algoritmos em si.
+
+---
+
 ## Contribuições
 
 Contribuições são bem-vindas. Sinta-se à vontade para fazer um *fork* do repositório, sugerir melhorias ou enviar um Pull Request.

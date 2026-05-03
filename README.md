@@ -1,110 +1,169 @@
-# Flight Analytics BR
+# Flight Analytics BR: Predição de Fator Predominante em Ocorrências Aeronáuticas
 
-Este projeto utiliza dados sobre ocorrências de aviação civil no Brasil para realizar análise exploratória, processamento de dados e modelagem preditiva. O objetivo é identificar o fator predominante (humano ou técnico) nas ocorrências, utilizando modelos de aprendizado de máquina.
+![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)
+![Scikit-Learn](https://img.shields.io/badge/Scikit_Learn-1.8-orange?style=for-the-badge&logo=scikit-learn)
+![Pandas](https://img.shields.io/badge/Pandas-3.0-darkblue?style=for-the-badge&logo=pandas)
+![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?style=for-the-badge&logo=jupyter)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-## Descrição
+Este projeto aplica técnicas de Machine Learning e Engenharia de Dados sobre a base de Ocorrências de Aviação Civil no Brasil (dados públicos do CENIPA). O objetivo é **classificar o fator predominante (Humano ou Técnico)** de uma ocorrência com base em características e metadados operacionais do evento.
 
-O código realiza os seguintes passos:
+---
 
-1. **Importação de Bibliotecas**:  
-   Bibliotecas para manipulação de dados (`pandas`, `numpy`), visualização (`matplotlib`, `seaborn`) e machine learning (`sklearn`) são carregadas.
+## Estrutura do Projeto
 
-2. **Upload e Leitura dos Dados**:  
-   O arquivo zip contendo o dataset é carregado, descompactado e lido para um DataFrame do Pandas.
+```
+flight-analytics-br/
+├── assets/
+│   ├── matriz_confusao_acuracia.png
+│   ├── heatmap_metricas_por_modelo_e_classe.png
+│   ├── relatorio_classificacao_macro_weighted.png
+│   └── top10_features_por_modelo.png
+├── data/
+│   └── ocorrencias_aviacao_civil_br.zip
+├── notebooks/
+│   └── Flight_Analytics_BR.ipynb
+├── .gitignore
+├── LICENSE
+├── README.md
+└── requirements.txt
+```
 
-3. **Análise Exploratória**:  
-   Exploração da coluna de categorias de ocorrência para classificar os dados em fatores predominantes: 'Humano', 'Técnico' ou 'Outros'.
+---
 
-4. **Processamento de Dados**:  
-   Criação da coluna `fator_predominante` com base na classificação e preparação dos dados para treinamento.
+## O Desafio
 
-5. **Balanceamento de Dados**:  
-   Uso do SMOTE (Synthetic Minority Over-sampling Technique) para balancear as classes nos dados de treinamento.
+Acidentes e incidentes aéreos são eventos complexos com causas multifatoriais. O desafio deste projeto foi lidar com um dataset desbalanceado, com significativamente mais casos técnicos do que humanos, e extrair padrões estatísticos de variáveis categóricas e temporais, evitando *data leakage*.
 
-6. **Modelagem Preditiva**:  
-   Treinamento de modelos de aprendizado de máquina, como Árvore de Decisão, Regressão Logística e Floresta Aleatória, para prever o fator predominante.
+Vale ressaltar que o dataset disponível registra predominantemente metadados administrativos das ocorrências, não as características operacionais que definem a causa raiz de um acidente. O modelo identifica correlações estatísticas, mas não estabelece relações de causalidade.
 
-7. **Avaliação de Modelos**:  
-   Apresentação das métricas de avaliação, como acurácia e matrizes de confusão, para cada modelo.
+---
 
 ## Dados
 
-### Variáveis Independentes Utilizadas no Modelo
+O dataset utilizado é de domínio público, disponibilizado pelo [CENIPA](https://dados.gov.br/dados/conjuntos-dados/ocorrencias-aeronauticas-da-aviacao-civil-brasileira) e também acessível pelo [Kaggle](https://www.kaggle.com/datasets/ronnycfs/ocorrencias-aviacao-civil-brasileira).
 
-As variáveis independentes utilizadas nos modelos preditivos foram:
+### Variáveis utilizadas no modelo
 
-- `ocorrencia_classificacao`: Classificação do tipo de ocorrência.
-- `ocorrencia_uf`: Estado onde ocorreu o evento.
-- `total_recomendacoes`: Número total de recomendações associadas à ocorrência.
-- `investigacao_status`: Status da investigação.
-- `ocorrencia_saida_pista`: Indicador de saída de pista.
-- `ocorrencia_tipo_categoria`: Categoria atribuída à ocorrência.
-- `aeronave_operador_categoria`: Categoria do operador da aeronave envolvida.
+| Coluna original | Coluna resultante | Transformação |
+|---|---|---|
+| `ocorrencia_classificacao` | `classificacao` | Renomear + OneHotEncoder |
+| `ocorrencia_uf` | `uf` | Renomear + OneHotEncoder |
+| `ocorrencia_dia` | `mes_sin`, `mes_cos` | Codificação cíclica (seno/cosseno) |
+| `ocorrencia_horario` | `periodo_dia` | Mapeamento para Madrugada/Manhã/Tarde/Noite + OneHotEncoder |
+| `total_aeronaves_envolvidas` | `total_aeronaves` | Renomear |
+| `ocorrencia_saida_pista` | `saida_pista` | Converter SIM/NÃO para 1/0 |
 
-### Fatores Humanos e Técnicos
+### Definição do target: `fator_predominante`
 
-Além das variáveis gerais, as variáveis relacionadas aos fatores humanos e técnicos também foram consideradas, com base na coluna `ocorrencia_tipo_categoria`. A classificação foi realizada da seguinte forma:
+A coluna `ocorrencia_tipo_categoria` foi usada para derivar o target do modelo:
 
-1. **Fatores Humanos**:
-   - As ocorrências com as categorias `PERDA DE CONTROLE EM VOO`, `PERDA DE CONTROLE NO SOLO`, `MANOBRA ABRUPTA` e `OPERAÇÃO A BAIXA ALTITUDE` foram classificadas como **Humanos**.
+**Humano (1):** `PERDA DE CONTROLE EM VOO`, `PERDA DE CONTROLE NO SOLO`, `MANOBRA ABRUPTA`, `OPERAÇÃO A BAIXA ALTITUDE`, `MÉDICO`
 
-2. **Fatores Técnicos**:
-   - As ocorrências com as categorias `FALHA OU MAU FUNCIONAMENTO DO MOTOR`, `FALHA OU MAU FUNCIONAMENTO DE SISTEMA / COMPONENTE` e `FOGO/FUMAÇA (SEM IMPACTO)` foram classificadas como **Técnicos**.
+**Técnico (0):** `FALHA OU MAU FUNCIONAMENTO DO MOTOR`, `FALHA OU MAU FUNCIONAMENTO DE SISTEMA / COMPONENTE`, `FOGO/FUMAÇA (SEM IMPACTO)`
 
+Demais categorias foram classificadas como `Outros` e excluídas do treinamento por ambiguidade. Após o filtro, o dataset ficou com **2.585 registros Técnico** e **894 registros Humano**, resultando em um desbalanceamento de 74.3% / 25.7%.
 
-A função de classificação foi aplicada à coluna `ocorrencia_tipo_categoria`, criando uma nova coluna chamada `fator_predominante`, que foi utilizada para filtrar as ocorrências relacionadas aos fatores humanos e técnicos. Isso possibilitou a análise mais focada nos fatores que influenciam as ocorrências, auxiliando na construção do modelo preditivo.
+---
 
-Essas variáveis relacionadas a fatores humanos e técnicos ajudam a capturar as causas subjacentes dos eventos, o que pode ser crucial para o modelo preditivo.
+## Pipeline de Dados e Pré-processamento
 
-## Ambiente
+1. **Feature Selection:** Remoção de variáveis que geram *data leakage*, como `ocorrencia_tipo` e `ocorrencia_tipo_icao`, mantendo apenas dados conhecidos no momento da ocorrência.
 
-O **Google Colab** foi escolhido como ambiente principal para facilitar o upload de dados e execução do código, permitindo que o projeto seja facilmente reproduzido por outros usuários.
+2. **Tratamento de valores sentinela:** O dataset utiliza `"***"` como valor sentinela para dados ausentes em colunas categóricas. Foram identificados 3 registros com esse padrão na coluna `uf`, que foram removidos antes do treinamento.
 
-## Como Usar
+3. **Feature Engineering:**
+   - Mapeamento de horários para **Períodos do Dia** (Madrugada, Manhã, Tarde, Noite), pois cada período tem comportamento operacional distinto, tornando o OneHotEncoder mais adequado que a codificação cíclica neste caso.
+   - **Codificação Cíclica** (Seno/Cosseno) para os meses do ano, preservando a adjacência entre Dezembro e Janeiro.
 
-1. **Obtenha o Dataset**:  
-   - Faça o upload do arquivo zip contendo os dados diretamente no repositório do projeto **ou** baixe o dataset pelo [Kaggle](https://www.kaggle.com/datasets/ronnycfs/ocorrencias-aviacao-civil-brasileira).
+4. **Tratamento de Dados Categóricos:** Uso de `OneHotEncoder` com `handle_unknown='ignore'`, aplicado após o split para evitar leakage do conjunto de teste.
 
-2. **Carregue os Dados no Colab**:  
-   - Acesse o **Google Colab** e faça o upload do arquivo zip baixado.  
-   - Extraia os dados do arquivo zip e carregue o arquivo CSV em um DataFrame do Pandas utilizando o código disponibilizado no projeto.
+5. **Balanceamento de Classes com SMOTE-NC:** Uso do **SMOTE-NC**  aplicado exclusivamente nos dados de treino após o split. O SMOTE-NC respeita a natureza das variáveis categóricas, copiando valores reais de vizinhos próximos em vez de interpolar linearmente entre categorias, evitando a geração de exemplos sintéticos impossíveis como uma ocorrência "40% em SP e 60% no RJ".
 
-3. **Execute o Código**:  
-   - Siga a ordem das células no notebook, que inclui processamento dos dados, treinamento dos modelos e avaliação dos resultados.  
+---
 
-Ao final, você terá as métricas de avaliação dos modelos e insights gerados pela análise exploratória.
+## Modelagem e Resultados
 
+Foram avaliados três algoritmos com abordagens matemáticas complementares: **Decision Tree**, **Random Forest** e **Logistic Regression**, todos treinados com hiperparâmetros padrão do sklearn para garantir uma comparação justa sem viés de tuning.
 
-## Resultados
+### Matriz de Confusão e Acurácia
 
-O gráfico de barras acima apresenta a **acurácia** dos três modelos treinados: Árvore de Decisão, Regressão Logística e Floresta Aleatória. Observa-se que:
+A Regressão Logística obteve o melhor desempenho geral (**80% de Acurácia**), com o menor número de falsos negativos (33) para a classe `Humano`, que é a classe de maior interesse para segurança aérea.
 
-- **Regressão Logística** obteve a maior acurácia (0.78), sendo o modelo mais eficaz dentre os avaliados.
-- **Floresta Aleatória** ficou em segundo lugar (0.77), com um desempenho próximo ao da Regressão Logística.
-- **Árvore de Decisão** apresentou a menor acurácia (0.76).
+![Matriz de Confusão](assets/matriz_confusao_acuracia.png)
 
-Além disso, as **matrizes de confusão** fornecem uma visão detalhada sobre o desempenho dos modelos em termos de acertos e erros em cada classe:
+### Relatório de Classificação
 
-- **Floresta Aleatória:**
-  - Alto número de verdadeiros positivos (339) para a classe predominante.
-  - O desempenho foi razoável para a classe minoritária, com 106 acertos.
+O recall de **0.82** da Regressão Logística para fatores Humanos demonstra que o modelo identifica corretamente 82% dos casos humanos. Para o contexto de segurança aérea, minimizar falsos negativos é prioritário: é preferível investigar um caso técnico suspeito do que deixar um caso humano sem identificação.
 
-- **Árvore de Decisão:**
-  - Apresentou mais erros de classificação na classe minoritária (24 predições incorretas).
-  - Foi menos precisa ao classificar a classe predominante em comparação com os outros modelos.
+![Métricas Macro/Weighted](assets/relatorio_classificacao_macro_weighted.png)
+![Heatmap de Métricas](assets/heatmap_metricas_por_modelo_e_classe.png)
 
-- **Regressão Logística:**
-  - Obteve um equilíbrio razoável entre as classes, acertando 138 casos da classe minoritária.
-  - Também apresentou o maior número de acertos na classe predominante (311).
+### Comparativo final dos modelos
 
-Esses resultados mostram que, embora todos os modelos sejam comparáveis em termos de acurácia geral, a **Regressão Logística** apresentou uma performance mais consistente entre as classes.
+| Modelo | Acurácia | F1 Técnico | F1 Humano | Macro avg |
+|---|---|---|---|---|
+| Decision Tree | 0.77 | 0.85 | 0.58 | 0.71 |
+| Logistic Regression | **0.80** | 0.85 | **0.67** | **0.76** |
+| Random Forest | 0.78 | 0.85 | 0.60 | 0.73 |
 
-![alt text](https://github.com/queirogaraffael/flight-analytics-br/blob/main/imagens-resultado/Untitled.png?raw=true)
-![alt text](https://github.com/queirogaraffael/flight-analytics-br/blob/main/imagens-resultado/Untitled-1.png?raw=true)
+### Importância das Features
+
+As features mais relevantes de forma consistente entre os três modelos foram `classificacao_INCIDENTE`, `mes_cos`/`mes_sin` e `saida_pista`. Isso indica que o tipo de classificação da ocorrência, a sazonalidade e a saída de pista são os sinais mais informativos para distinguir fator humano de técnico neste dataset.
+
+![Top 10 Features](assets/top10_features_por_modelo.png)
+
+---
+
+## Como Executar o Projeto Localmente
+
+1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/queirogaraffael/flight-analytics-br.git
+   cd flight-analytics-br
+   ```
+
+2. **Crie e ative o ambiente virtual:**
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate  # Linux/Mac
+   # ou
+   .venv\Scripts\activate  # Windows
+   ```
+
+3. **Instale as dependências:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Execute o notebook:**
+   O dataset já está incluso no repositório dentro da pasta `data/`. Basta abrir `notebooks/Flight_Analytics_BR.ipynb` no Jupyter Notebook e executar as células em ordem.
+
+---
+
+## Limitações
+
+Este projeto é um **exercício analítico baseado em dados disponíveis**. As variáveis utilizadas são metadados administrativos, não características operacionais que definem a causa raiz de um acidente. O modelo identifica correlações estatísticas entre os dados e o target construído, mas não estabelece relações causais com as causas reais dos acidentes.
+
+Limitações específicas incluem ausência de dados sobre experiência do piloto, condições meteorológicas detalhadas, histórico de manutenção da aeronave e fase do voo, variáveis que teriam alto valor preditivo para o objetivo do projeto.
+
+---
+
+## Conclusão
+
+Este projeto demonstrou que é perfeitamente viável extrair padrões analíticos e criar modelos preditivos funcionais a partir de metadados administrativos de ocorrências aéreas. 
+
+A adoção do **SMOTE-NC** provou ser uma decisão arquitetural crucial para evitar a distorção das variáveis categóricas, permitindo que o modelo aprendesse padrões reais em vez de ruídos matemáticos. Dentre os modelos avaliados, a **Regressão Logística** entregou o melhor resultado prático para o contexto do problema, alcançando **80% de acurácia geral** e um excelente **recall de 82%** para a classe minoritária (Fator Humano). 
+
+Apesar de as árvores de decisão e o ensemble (Random Forest) serem teoricamente mais robustos para variáveis de alta cardinalidade, a natureza do dataset, somada à interpolação linear inevitável em variáveis numéricas durante o balanceamento, acabou favorecendo o modelo linear. Em suma, o projeto atinge seu objetivo ao apresentar um pipeline analítico maduro, com justificativas claras para cada etapa de engenharia de dados.
+
+---
 
 ## Contribuições
 
-Este projeto está aberto para contribuições. Caso deseje melhorar ou sugerir modificações, sinta-se à vontade para fazer um fork e enviar um pull request.
+Contribuições são bem-vindas. Sinta-se à vontade para fazer um *fork* do repositório, sugerir melhorias ou enviar um Pull Request.
+
+---
 
 ## Licença
 

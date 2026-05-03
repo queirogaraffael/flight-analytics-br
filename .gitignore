@@ -5,3 +5,4 @@ data/ocorrencias_aviacao_civil_br/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.venv/
